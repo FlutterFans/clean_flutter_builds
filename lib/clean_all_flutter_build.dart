@@ -5,14 +5,27 @@ Future cleanFlutter(String path) async {
   var file = File(path);
   if (file.statSync().type == FileSystemEntityType.directory) {
     var dir = Directory(path);
+    recursiveFile(dir);
+  }
+  print('clean finish');
+}
 
-    var list = dir.listSync(recursive: true);
-    for (var child in list) {
-      var names = child.absolute.path.split("/");
-      if (names.last == "pubspec.yaml") {
+recursiveFile(Directory file) {
+  final items = file.listSync(recursive: false, followLinks: false);
+  handleFile(items);
+}
+
+handleFile(list) async {
+  for (var child in list) {
+    if (child is Directory) {
+      final targetfile = File('${child.path}/pubspec.yaml');
+      if (targetfile.existsSync()) {
+        print('remove $targetfile');
         try {
-          await _runCleanCommand(child.parent.absolute.path);
+          await _runCleanCommand(child.absolute.path);
         } catch (e) {}
+      } else {
+        recursiveFile(child);
       }
     }
   }
@@ -22,8 +35,7 @@ Future _runCleanCommand(String path) async {
   var shell = new Shell();
   shell.workingDirectory = path;
   var ls = await shell.startAndReadAsString("flutter", ["clean"]);
-  removeIosFramework(path);
-  print(ls);
+  await removeIosFramework(path);
 }
 
 Future removeIosFramework(String path) async {
